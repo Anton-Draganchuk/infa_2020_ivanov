@@ -7,7 +7,7 @@ from Ball import *
 from Interface import *
 pygame.init()
 
-FPS = 60
+FPS = 120
 screen = pygame.display.set_mode((1080, 720))
 
 screen.fill(White)
@@ -33,12 +33,12 @@ while not finished:
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == 27):
             finished = True
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            if hit(event):
-                Score += 1
-            elif exit(event):
+            Score += hit(event)
+            if exit(event):
                 finished = True
     screen.fill(White)
     movement()
+    collision()
     exit_buttom()
     counter(event, Score)
     pygame.display.update()

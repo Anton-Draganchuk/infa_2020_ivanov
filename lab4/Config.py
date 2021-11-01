@@ -20,4 +20,4 @@ White = (255, 255, 255)
 COLORS = [RED, BLUE, YELLOW, GREEN, MAGENTA, CYAN]
 Score = 0
 coordinate = []
-Ball_number = 6
+Ball_number = 10

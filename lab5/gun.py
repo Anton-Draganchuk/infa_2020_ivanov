@@ -15,7 +15,7 @@ CYAN = 0x00FFCC
 BLACK = (0, 0, 0)
 WHITE = 0xFFFFFF
 GREY = 0x7D7D7D
-GAME_COLORS = [RED, BLUE, YELLOW, GREEN, MAGENTA, CYAN]
+GAME_COLORS = [BLUE, YELLOW, GREEN, MAGENTA, CYAN]
 
 WIDTH = 800
 HEIGHT = 600
@@ -37,7 +37,7 @@ class Ball:
         self.vy = 0
         self.a = 2
         self.color = choice.choice(GAME_COLORS)
-        self.live = 30
+        self.live = 60
 
     def move(self):
         """Переместить мяч по прошествии единицы времени.
@@ -53,11 +53,15 @@ class Ball:
             self.x += self.vx
         if math.fabs(HEIGHT - self.y) <= self.r - self.vy and self.vy < 0:
             self.y = HEIGHT - self.r
-            self.vy *= -0.8
-            self.vx *= 0.7
+            self.vy *= -0.7
+            self.vx *= 0.6
         else:
             self.y -= self.vy
         self.vy -= self.a
+        if self.live == 0:
+            balls.remove(self)
+        else:
+            self.live -= 1
 
     def draw(self):
         pygame.draw.circle(
@@ -65,6 +69,13 @@ class Ball:
             self.color,
             (self.x, self.y),
             self.r
+        )
+        pygame.draw.circle(
+            self.screen,
+            BLACK,
+            (self.x, self.y),
+            self.r,
+            1
         )
 
     def hittest(self, obj):
@@ -75,8 +86,10 @@ class Ball:
         Returns:
             Возвращает True в случае столкновения мяча и цели. В противном случае возвращает False.
         """
-        # FIXME
-        return False
+        if math.sqrt((self.x - obj.x)**2 + (self.y - obj.y)**2) <= self.r + obj.r:
+            return True
+        else:
+            return False
 
 
 class Gun:
@@ -85,7 +98,7 @@ class Gun:
         self.f2_power = 10
         self.f2_on = 0
         self.an = 1
-        self.thickness = 10
+        self.thickness = 7
         self.length = 15
         self.color = BLACK
 
@@ -117,48 +130,51 @@ class Gun:
             else:
                 self.an = math.atan((event.pos[1]-450) / (event.pos[0]-20))
         if self.f2_on:
-            self.color = RED
+            self.color = YELLOW
         else:
             self.color = BLACK
 
     def draw(self):
-        """pygame.draw.polygon(self.screen, self.color, [(20, 450), (20 + math.cos(self.an)*(self.length + self.f2_power),
+        pygame.draw.polygon(self.screen, self.color, [(20, 450), (20 + math.cos(self.an)*(self.length + self.f2_power),
                                                     450 + math.sin(self.an)*(self.length + self.f2_power)),
-                                                   (20 + int(math.cos(self.an)*(self.length + self.f2_power) - math.sin(self.an)*self.thickness),
-                                                    450 + int(math.sin(self.an)*(self.length + self.f2_power) + math.cos(self.an)*self.thickness)),
-                                                   (20 - int(math.sin(self.an)*self.thickness),
-                                                    450 + int(math.cos(self.an)*self.thickness)),
-                                                   (20, 450)])"""
-        pygame.draw.lines(self.screen, self.color, False, [(20, 450), (float(20 + math.cos(self.an)*(self.length + self.f2_power)), float(450 + math.sin(self.an)*(self.length + self.f2_power)))], 10)
+                                                   (20 + (math.cos(self.an)*(self.length + self.f2_power) - math.sin(self.an)*self.thickness),
+                                                    450 + (math.sin(self.an)*(self.length + self.f2_power) + math.cos(self.an)*self.thickness)),
+                                                   (20 - (math.sin(self.an)*self.thickness),
+                                                    450 + (math.cos(self.an)*self.thickness)),
+                                                   (20, 450)])
 
     def power_up(self):
         if self.f2_on:
-            if self.f2_power < 100:
+            if self.f2_power < 50:
                 self.f2_power += 1
-            self.color = RED
+            self.color = YELLOW
         else:
-            self.color = GREY
+            self.color = BLACK
 
 
 class Target:
-    # self.points = 0
-    # self.live = 1
-    # FIXME: don't work!!! How to call this functions when object is created?
-    # self.new_target()
+    def __init__(self, screen):
+        self.screen = screen
+        self.points = 0
+        self.live = 1
 
     def new_target(self):
         """ Инициализация новой цели. """
-        x = self.x = choice.randint(600, 780)
-        y = self.y = choice.randint(300, 550)
-        r = self.r = choice.randint(2, 50)
-        color = self.color = RED
+        self.x = choice.randint(600, 780)
+        self.y = choice.randint(300, 550)
+        self.r = choice.randint(10, 50)
+        self.color = RED
 
     def hit(self, points=1):
         """Попадание шарика в цель."""
         self.points += points
 
     def draw(self):
-        ...
+        pygame.draw.circle(self.screen, self.color, (self.x, self.y), self.r)
+        pygame.draw.circle(self.screen, BLACK, (self.x, self.y), self.r, 1)
+        font = pygame.font.Font(None, 20)
+        img = font.render(str(self.points), False, BLACK)
+        screen.blit(img, (50, 50))
 
 
 pygame.init()
@@ -168,7 +184,8 @@ balls = []
 
 clock = pygame.time.Clock()
 gun = Gun(screen)
-target = Target()
+target = Target(screen)
+target.new_target()
 finished = False
 
 while not finished:
@@ -193,7 +210,7 @@ while not finished:
     for b in balls:
         b.move()
         if b.hittest(target) and target.live:
-            target.live = 0
+            # target.live = 0
             target.hit()
             target.new_target()
     gun.power_up()

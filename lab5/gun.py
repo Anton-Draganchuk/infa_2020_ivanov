@@ -22,7 +22,7 @@ HEIGHT = 600
 
 
 class Ball:
-    def __init__(self, screen: pygame.Surface, x=20, y=450):
+    def __init__(self, screen: pygame.Surface):
         """ Конструктор класса ball
 
         Args:
@@ -30,8 +30,12 @@ class Ball:
         y - начальное положение мяча по вертикали
         """
         self.screen = screen
-        self.x = x
-        self.y = y
+        if gun.an <= 0:
+            self.x = 20+120*math.cos(gun.an)-(63 / 2)*math.sin(gun.an)
+            self.y = 410+(63 / 2)*math.cos(gun.an)
+        else:
+            self.x = 20+120*math.cos(gun.an)+(63 / 2)*math.sin(gun.an)
+            self.y = 410+120*math.sin(gun.an)+(63 / 2)*math.cos(gun.an)
         self.r = 10
         self.vx = 0
         self.vy = 0
@@ -104,6 +108,7 @@ class Gun:
 
     def fire2_start(self, event):
         self.f2_on = 1
+        sound_reload.play()
 
     def fire2_end(self, event):
         """Выстрел мячом.
@@ -115,12 +120,12 @@ class Gun:
         bullet += 1
         new_ball = Ball(self.screen)
         new_ball.r += 5
-        self.an = math.atan2((event.pos[1]-new_ball.y), (event.pos[0]-new_ball.x))
         new_ball.vx = self.f2_power * math.cos(self.an)
         new_ball.vy = - self.f2_power * math.sin(self.an)
         balls.append(new_ball)
         self.f2_on = 0
         self.f2_power = 10
+        sound_shot.play()
 
     def targetting(self, event):
         """Прицеливание. Зависит от положения мыши."""
@@ -129,27 +134,14 @@ class Gun:
                 self.an = math.pi / 2
             else:
                 self.an = math.atan((event.pos[1]-450) / (event.pos[0]-20))
-        if self.f2_on:
-            self.color = YELLOW
-        else:
-            self.color = BLACK
 
     def draw(self):
-        pygame.draw.polygon(self.screen, self.color, [(20, 450), (20 + math.cos(self.an)*(self.length + self.f2_power),
-                                                    450 + math.sin(self.an)*(self.length + self.f2_power)),
-                                                   (20 + (math.cos(self.an)*(self.length + self.f2_power) - math.sin(self.an)*self.thickness),
-                                                    450 + (math.sin(self.an)*(self.length + self.f2_power) + math.cos(self.an)*self.thickness)),
-                                                   (20 - (math.sin(self.an)*self.thickness),
-                                                    450 + (math.cos(self.an)*self.thickness)),
-                                                   (20, 450)])
+        screen.blit(pygame.transform.rotate(image_gun, - self.an / math.pi * 180), (20, 410))
 
     def power_up(self):
         if self.f2_on:
             if self.f2_power < 50:
                 self.f2_power += 1
-            self.color = YELLOW
-        else:
-            self.color = BLACK
 
 
 class Target:
@@ -172,15 +164,27 @@ class Target:
     def draw(self):
         pygame.draw.circle(self.screen, self.color, (self.x, self.y), self.r)
         pygame.draw.circle(self.screen, BLACK, (self.x, self.y), self.r, 1)
-        font = pygame.font.Font(None, 20)
+        font = pygame.font.Font(None, 30)
         img = font.render(str(self.points), False, BLACK)
-        screen.blit(img, (50, 50))
+        screen.blit(img, (30, 30))
 
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 bullet = 0
 balls = []
+
+pygame.mixer.init()
+pygame.mixer.music.load('Gp.mp3')
+pygame.mixer.music.play(-1)
+sound_shot = pygame.mixer.Sound('Shot.wav')
+sound_reload = pygame.mixer.Sound('Reload.wav')
+
+image = pygame.image.load('Gelik.png').convert_alpha()
+new_image = pygame.transform.scale(image, (WIDTH, HEIGHT))
+
+image_gun = pygame.transform.scale(pygame.image.load('Gun.png').convert_alpha(), (120, 63))
+
 
 clock = pygame.time.Clock()
 gun = Gun(screen)
@@ -190,6 +194,7 @@ finished = False
 
 while not finished:
     screen.fill(WHITE)
+    screen.blit(new_image, (0, 0))
     gun.draw()
     target.draw()
     for b in balls:

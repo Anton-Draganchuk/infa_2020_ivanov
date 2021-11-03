@@ -31,8 +31,8 @@ class Ball:
         """
         self.screen = screen
         if gun.an <= 0:
-            self.x = 20+120*math.cos(gun.an)-(63 / 2)*math.sin(gun.an)
-            self.y = 410+(63 / 2)*math.cos(gun.an)
+            self.x = gun.x+120*math.cos(gun.an)-(63 / 2)*math.sin(gun.an)
+            self.y = gun.y+(63 / 2)*math.cos(gun.an)
         else:
             self.x = 20+120*math.cos(gun.an)+(63 / 2)*math.sin(gun.an)
             self.y = 410+120*math.sin(gun.an)+(63 / 2)*math.cos(gun.an)
@@ -105,6 +105,8 @@ class Gun:
         self.thickness = 7
         self.length = 15
         self.color = BLACK
+        self.x = 20
+        self.y = 410
 
     def fire2_start(self, event):
         self.f2_on = 1
@@ -130,13 +132,13 @@ class Gun:
     def targetting(self, event):
         """Прицеливание. Зависит от положения мыши."""
         if event:
-            if event.pos[0]-20 == 0:
+            if event.pos[0]-self.x == 0:
                 self.an = math.pi / 2
             else:
-                self.an = math.atan((event.pos[1]-450) / (event.pos[0]-20))
+                self.an = math.atan((event.pos[1]-self.y) / (event.pos[0]-self.x))
 
     def draw(self):
-        screen.blit(pygame.transform.rotate(image_gun, - self.an / math.pi * 180), (20, 410))
+        screen.blit(pygame.transform.rotate(image_gun, - self.an / math.pi * 180), (self.x, self.y))
 
     def power_up(self):
         if self.f2_on:
@@ -152,9 +154,9 @@ class Target:
 
     def new_target(self):
         """ Инициализация новой цели. """
-        self.x = choice.randint(600, 780)
-        self.y = choice.randint(300, 550)
         self.r = choice.randint(10, 50)
+        self.x = choice.randint(300, 780 - self.r)
+        self.y = choice.randint(30 + self.r, 580 - self.r)
         self.color = RED
 
     def hit(self, points=1):
@@ -164,21 +166,58 @@ class Target:
     def draw(self):
         pygame.draw.circle(self.screen, self.color, (self.x, self.y), self.r)
         pygame.draw.circle(self.screen, BLACK, (self.x, self.y), self.r, 1)
-        font = pygame.font.Font(None, 30)
-        img = font.render(str(self.points), False, BLACK)
-        screen.blit(img, (30, 30))
+
+
+class Interface:
+    def __init__(self, screen):
+        self.screen = screen
+        self.font = pygame.font.Font(None, 30)
+
+    def blit_points(self):
+        self.screen.blit(self.font.render(str(target.points), False, BLACK), (20, 30))
+
+    def blit_hit(self):
+        pygame.draw.rect(self.screen, WHITE, [240, 290, 390, 40])
+        if bullet == 1:
+            self.text = 'Вы уничтожили цель за ' + str(bullet) + ' выстрел'
+        elif bullet <= 4:
+            self.text = 'Вы уничтожили цель за ' + str(bullet) + ' выстрела'
+        else:
+            self.text = 'Вы уничтожили цель за ' + str(bullet) + ' выстрелов'
+        self.screen.blit(self.font.render(self.text, False, BLACK), (250, 300))
+
+    def power(self):
+        self.color = GREEN
+        if gun.f2_power >= 40:
+            self.color = RED
+        elif gun.f2_power >= 30:
+            self.color = YELLOW
+        pygame.draw.rect(self.screen, self.color, [50, 30, 2*gun.f2_power, 10])
+        pygame.draw.rect(self.screen, BLACK, [50, 30, 100, 10], 2)
 
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 bullet = 0
 balls = []
+pause = 0
+target = []
 
 pygame.mixer.init()
 pygame.mixer.music.load('Gp.mp3')
 pygame.mixer.music.play(-1)
 sound_shot = pygame.mixer.Sound('Shot.wav')
 sound_reload = pygame.mixer.Sound('Reload.wav')
+sound_win1 = pygame.mixer.Sound('Sound1.wav')
+sound_win2 = pygame.mixer.Sound('Sound2.wav')
+sound_win3 = pygame.mixer.Sound('Sound3.wav')
+sound_win4 = pygame.mixer.Sound('Sound4.wav')
+sound_win5 = pygame.mixer.Sound('Sound5.wav')
+sound_win6 = pygame.mixer.Sound('Sound6.wav')
+sound_win7 = pygame.mixer.Sound('Sound7.wav')
+sound_win8 = pygame.mixer.Sound('Sound8.wav')
+sound_win9 = pygame.mixer.Sound('Sound9.wav')
+playlist = [sound_win1, sound_win2, sound_win3, sound_win4, sound_win5, sound_win6, sound_win7, sound_win8, sound_win9]
 
 image = pygame.image.load('Gelik.png').convert_alpha()
 new_image = pygame.transform.scale(image, (WIDTH, HEIGHT))
@@ -189,6 +228,7 @@ image_gun = pygame.transform.scale(pygame.image.load('Gun.png').convert_alpha(),
 clock = pygame.time.Clock()
 gun = Gun(screen)
 target = Target(screen)
+interface = Interface(screen)
 target.new_target()
 finished = False
 
@@ -196,28 +236,55 @@ while not finished:
     screen.fill(WHITE)
     screen.blit(new_image, (0, 0))
     gun.draw()
-    target.draw()
-    for b in balls:
-        b.draw()
-    pygame.display.update()
+    interface.blit_points()
+    interface.power()
+    if pause == 0:
+        pygame.mixer.music.unpause()
+        target.draw()
+        for b in balls:
+            b.draw()
+        pygame.display.update()
 
-    clock.tick(FPS)
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == 27):
-            finished = True
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            gun.fire2_start(event)
-        elif event.type == pygame.MOUSEBUTTONUP:
-            gun.fire2_end(event)
-        elif event.type == pygame.MOUSEMOTION:
-            gun.targetting(event)
+        clock.tick(FPS)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                finished = True
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                gun.fire2_start(event)
+            elif event.type == pygame.MOUSEBUTTONUP:
+                gun.fire2_end(event)
+            elif event.type == pygame.MOUSEMOTION:
+                gun.targetting(event)
 
-    for b in balls:
-        b.move()
-        if b.hittest(target) and target.live:
-            # target.live = 0
-            target.hit()
-            target.new_target()
-    gun.power_up()
+        for b in balls:
+            b.move()
+            if b.hittest(target) and target.live:
+                pause = 100
+                target.hit()
+                target.new_target()
+                pygame.mixer.music.pause()
+                choice.choice(playlist).play()
+
+        gun.power_up()
+    else:
+        interface.blit_hit()
+        for b in balls:
+            b.draw()
+        pygame.display.update()
+
+        clock.tick(FPS)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == 27):
+                finished = True
+            elif event.type == pygame.MOUSEMOTION:
+                gun.targetting(event)
+
+        for b in balls:
+            b.move()
+
+        pause -= 1
+        if pause == 0:
+            bullet = 0
+
 
 pygame.quit()

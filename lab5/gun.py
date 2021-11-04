@@ -82,7 +82,7 @@ class Ball:
             1
         )
 
-    def hittest(self, obj):
+    def hittest(self):
         """Функция проверяет сталкивалкивается ли данный обьект с целью, описываемой в обьекте obj.
 
         Args:
@@ -90,10 +90,14 @@ class Ball:
         Returns:
             Возвращает True в случае столкновения мяча и цели. В противном случае возвращает False.
         """
-        if math.sqrt((self.x - obj.x)**2 + (self.y - obj.y)**2) <= self.r + obj.r:
-            return True
-        else:
-            return False
+        for obj in target:
+            if math.sqrt((self.x - obj.x)**2 + (self.y - obj.y)**2) <= self.r + obj.r:
+                obj.hit()
+                target.remove(obj)
+                new_target = Target(self.screen)
+                target.append(new_target)
+                return True
+        return False
 
 
 class Gun:
@@ -149,19 +153,36 @@ class Gun:
 class Target:
     def __init__(self, screen):
         self.screen = screen
-        self.points = 0
-        self.live = 1
-
-    def new_target(self):
-        """ Инициализация новой цели. """
         self.r = choice.randint(10, 50)
         self.x = choice.randint(300, 780 - self.r)
         self.y = choice.randint(30 + self.r, 580 - self.r)
+        self.vx = choice.randint(2, 5)
+        self.vy = choice.randint(2, 5)
         self.color = RED
 
-    def hit(self, points=1):
+    def move(self):
+        """ Инициализация новой цели. """
+        if math.fabs(WIDTH - self.x) <= self.r + self.vx and self.vx > 0:
+            self.x = WIDTH - self.r
+            self.vx *= -1
+        elif math.fabs(300 - self.x) <= self.r + self.vx and self.vx < 0:
+            self.x = 300 + self.r
+            self.vx *= -1
+        else:
+            self.x += self.vx
+        if math.fabs(HEIGHT - self.y) <= self.r - self.vy and self.vy < 0:
+            self.y = HEIGHT - self.r
+            self.vy *= -1
+        elif self.y <= self.r - self.vy and self.vy > 0:
+            self.y = self.r
+            self.vy *= -1
+        else:
+            self.y -= self.vy
+
+    def hit(self):
         """Попадание шарика в цель."""
-        self.points += points
+        global points
+        points += 1
 
     def draw(self):
         pygame.draw.circle(self.screen, self.color, (self.x, self.y), self.r)
@@ -174,7 +195,7 @@ class Interface:
         self.font = pygame.font.Font(None, 30)
 
     def blit_points(self):
-        self.screen.blit(self.font.render(str(target.points), False, BLACK), (20, 30))
+        self.screen.blit(self.font.render(str(points), False, BLACK), (20, 30))
 
     def blit_hit(self):
         pygame.draw.rect(self.screen, WHITE, [240, 290, 390, 40])
@@ -199,6 +220,7 @@ class Interface:
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 bullet = 0
+points = 0
 balls = []
 pause = 0
 target = []
@@ -227,9 +249,10 @@ image_gun = pygame.transform.scale(pygame.image.load('Gun.png').convert_alpha(),
 
 clock = pygame.time.Clock()
 gun = Gun(screen)
-target = Target(screen)
+for i in range(2):
+    new_target = Target(screen)
+    target.append(new_target)
 interface = Interface(screen)
-target.new_target()
 finished = False
 
 while not finished:
@@ -239,8 +262,9 @@ while not finished:
     interface.blit_points()
     interface.power()
     if pause == 0:
-        pygame.mixer.music.unpause()
-        target.draw()
+        pygame.mixer.music.set_volume(1)
+        for obj in target:
+            obj.draw()
         for b in balls:
             b.draw()
         pygame.display.update()
@@ -256,13 +280,13 @@ while not finished:
             elif event.type == pygame.MOUSEMOTION:
                 gun.targetting(event)
 
+        for obj in target:
+            obj.move()
         for b in balls:
             b.move()
-            if b.hittest(target) and target.live:
+            if b.hittest():
                 pause = 100
-                target.hit()
-                target.new_target()
-                pygame.mixer.music.pause()
+                pygame.mixer.music.set_volume(0.5)
                 choice.choice(playlist).play()
 
         gun.power_up()
@@ -288,3 +312,4 @@ while not finished:
 
 
 pygame.quit()
+

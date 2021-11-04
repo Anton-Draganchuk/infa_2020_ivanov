@@ -36,7 +36,7 @@ class Ball:
         else:
             self.x = 20+120*math.cos(gun.an)+(63 / 2)*math.sin(gun.an)
             self.y = 410+120*math.sin(gun.an)+(63 / 2)*math.cos(gun.an)
-        self.r = 10
+        self.r = 5
         self.vx = 0
         self.vy = 0
         self.a = 2
@@ -155,7 +155,7 @@ class Target:
         self.screen = screen
         self.r = choice.randint(10, 50)
         self.x = choice.randint(300, 780 - self.r)
-        self.y = choice.randint(30 + self.r, 580 - self.r)
+        self.y = choice.randint(30 + self.r, 480 - self.r)
         self.vx = choice.randint(2, 5)
         self.vy = choice.randint(2, 5)
         self.color = RED
@@ -170,8 +170,8 @@ class Target:
             self.vx *= -1
         else:
             self.x += self.vx
-        if math.fabs(HEIGHT - self.y) <= self.r - self.vy and self.vy < 0:
-            self.y = HEIGHT - self.r
+        if math.fabs(500 - self.y) <= self.r - self.vy and self.vy < 0:
+            self.y = 500 - self.r
             self.vy *= -1
         elif self.y <= self.r - self.vy and self.vy > 0:
             self.y = self.r
@@ -254,6 +254,7 @@ for i in range(2):
     target.append(new_target)
 interface = Interface(screen)
 finished = False
+shot = False
 
 while not finished:
     screen.fill(WHITE)
@@ -279,6 +280,12 @@ while not finished:
                 gun.fire2_end(event)
             elif event.type == pygame.MOUSEMOTION:
                 gun.targetting(event)
+            elif (event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE) or shot:
+                gun.f2_power = 50
+                gun.fire2_end(event)
+                shot = True
+            elif event.type == pygame.KEYUP and event.key == pygame.K_SPACE:
+                shot = False
 
         for obj in target:
             obj.move()

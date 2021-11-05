@@ -1,0 +1,3 @@
+([('gun',
+   '/Users/antondraganchuk/Desktop/GitHub/lab5/dist/gun',
+   'EXECUTABLE')],)

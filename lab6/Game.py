@@ -4,7 +4,7 @@ import pygame
 
 FPS = 30
 
-RED = 0xFF0000
+RED = (255, 0, 0)
 BLUE = 0x0000FF
 YELLOW = (255, 255, 0)
 GREEN = (0, 255, 0)
@@ -28,8 +28,8 @@ class Ball:
         y - начальное положение мяча по вертикали
         """
         self.screen = screen
-        self.x = tank.x + 25*math.sin(tank.an)
-        self.y = tank.y - 25*math.cos(tank.an)
+        self.x = tank.x + 25 * math.sin(tank.an)
+        self.y = tank.y - 25 * math.cos(tank.an)
         self.r = 5
         self.vx = 0
         self.vy = 0
@@ -44,10 +44,6 @@ class Ball:
         и стен по краям окна (размер окна 800х600).
         """
         self.x += self.vx
-        """if math.fabs(HEIGHT - 100 - self.y) <= self.r - self.vy and self.vy < 0:
-            self.y = HEIGHT - 100 - self.r
-            balls.remove(self)
-        else:"""
         self.y -= self.vy
         if self.live == 0:
             balls.remove(self)
@@ -72,41 +68,52 @@ class Ball:
     def hit(self):
         for t in trucks:
             if (t.x <= self.x <= t.x + 100) and t.y <= self.y <= t.y + 53:
-                t.HP -= 2
+                t.HP -= 1
                 balls.remove(self)
+
         for r in interface.rocks:
             if (r[0] <= self.x <= r[0] + 72) and r[1] <= self.y <= r[1] + 50:
                 balls.remove(self)
+
         for t in tanks:
             if t.stop:
                 if t.an != 0:
-                    b11 = (56*math.cos(t.an) + t.y) - math.tan(t.an)*(t.x - 56*math.sin(t.an))
+                    b11 = (56 * math.cos(t.an) + t.y) - math.tan(t.an) * (t.x - 56 * math.sin(t.an))
                     b10 = self.y - math.tan(t.an) * self.x
                     b12 = (t.y - 56 * math.cos(t.an)) - math.tan(t.an) * (t.x + 56 * math.sin(t.an))
                     b21 = (t.y - 20 * math.sin(t.an)) + (1 / math.tan(t.an)) * (t.x - 20 * math.cos(t.an))
-                    b20 = self.y + (1 / math.tan(t.an)*self.x)
+                    b20 = self.y + (1 / math.tan(t.an) * self.x)
                     b22 = (t.y + 20 * math.sin(t.an)) + (1 / math.tan(t.an)) * (t.x + 20 * math.cos(t.an))
                     if t.an < 0:
                         if b11 > b10 > b12 and b21 > b20 > b22:
-                            t.HP -= 2
+                            t.HP -= 1
                             balls.remove(self)
                     else:
                         if b11 > b10 > b12 and b21 < b20 < b22:
-                            t.HP -= 2
+                            t.HP -= 1
                             balls.remove(self)
                 else:
-                    b11 = (56*math.cos(t.an) + t.y) - math.tan(t.an)*(t.x - 56*math.sin(t.an))
+                    b11 = (56 * math.cos(t.an) + t.y) - math.tan(t.an) * (t.x - 56 * math.sin(t.an))
                     b10 = self.y - math.tan(t.an) * self.x
                     b12 = (t.y - 56 * math.cos(t.an)) - math.tan(t.an) * (t.x + 56 * math.sin(t.an))
                     if b11 > b10 > b12 and t.x > self.x > t.x + 39:
-                        t.HP -= 2
+                        t.HP -= 1
                         balls.remove(self)
+            else:
+                if -56 < self.x - t.x < 56 and -20 < self.y - t.y < 20:
+                    t.HP -= 1
+                    balls.remove(self)
+
+        if math.fabs(self.x - tank.x) <= 31 and math.fabs(self.y - tank.y) <= 31:
+            tank.HP -= 1
+            balls.remove(self)
 
 
 class Tank:
     def __init__(self, screen):
         self.screen = screen
         self.f2_power = 45
+        self.f2_power_bullet = 10
         self.an = 0
         self.x = 400
         self.y = 500
@@ -117,6 +124,9 @@ class Tank:
         self.v = 10
         self.flag_a = 0
         self.flag_d = 0
+        self.HP = 5
+        self.bullet = 0
+        self.font = pygame.font.Font(None, 25)
 
     def move(self):
         if self.flag_a:
@@ -135,13 +145,18 @@ class Tank:
             self.movement = 0
 
     def fire2_start(self):
-        global balls
         if not self.movement:
             if self.reload == 0:
-                new_ball = Ball(self.screen)
-                new_ball.vx = self.f2_power * math.sin(self.an)
-                new_ball.vy = self.f2_power * math.cos(self.an)
-                balls.append(new_ball)
+                if not self.bullet:
+                    new_ball = Ball(self.screen)
+                    new_ball.vx = self.f2_power * math.sin(self.an)
+                    new_ball.vy = self.f2_power * math.cos(self.an)
+                    balls.append(new_ball)
+                else:
+                    new_bullet = Bullet(self.screen)
+                    new_bullet.vx = self.f2_power_bullet * math.sin(self.an)
+                    new_bullet.vy = self.f2_power_bullet * math.cos(self.an)
+                    bullets.append(new_bullet)
                 self.reload = 30
 
     def targetting(self, event):
@@ -156,12 +171,15 @@ class Tank:
     def draw(self):
         if self.an > 0:
             self.screen.blit(pygame.transform.rotate(image_tank, - self.an / math.pi * 180),
-                        (self.x - (69*math.sin(self.an) + 62*math.cos(self.an)) / 2,
-                         self.y - (69*math.cos(self.an) + 62*math.sin(self.an)) / 2))
+                             (self.x - (69 * math.sin(self.an) + 62 * math.cos(self.an)) / 2,
+                              self.y - (69 * math.cos(self.an) + 62 * math.sin(self.an)) / 2))
         else:
             self.screen.blit(pygame.transform.rotate(image_tank, - self.an / math.pi * 180),
-                        (self.x - (-69*math.sin(self.an) + 62*math.cos(self.an)) / 2,
-                         self.y - (69*math.cos(self.an) - 62*math.sin(self.an)) / 2))
+                             (self.x - (-69 * math.sin(self.an) + 62 * math.cos(self.an)) / 2,
+                              self.y - (69 * math.cos(self.an) - 62 * math.sin(self.an)) / 2))
+
+        screen.blit(self.font.render(str(self.HP), False, RED), (self.x - 5, self.y + 70))
+
         if self.reload != 0:
             self.reload -= 1
 
@@ -188,12 +206,12 @@ class Interface:
 
     def draw_reload(self):
         self.reload_color = GREEN
-        if tank.reload*2 >= 40:
+        if tank.reload * 2 >= 40:
             self.reload_color = RED
-        elif tank.reload*2 >= 30:
+        elif tank.reload * 2 >= 30:
             self.reload_color = YELLOW
-        pygame.draw.rect(self.screen, self.reload_color, [tank.x - 30, tank.y + 60, 2*tank.reload, 10])
-        pygame.draw.rect(self.screen, BLACK, [tank.x - 30, tank.y + 60, 60, 10], 2)
+        pygame.draw.rect(self.screen, self.reload_color, [tank.x - 30, tank.y + 50, 2 * tank.reload, 10])
+        pygame.draw.rect(self.screen, BLACK, [tank.x - 30, tank.y + 50, 60, 10], 2)
 
     def draw_road(self):
         while self.road_x < 800:
@@ -211,6 +229,13 @@ class Interface:
         for r in self.rocks:
             self.screen.blit(image_rock, (r[0], r[1]))
 
+    def game_over(self):
+        if self.town_hall_HP <= 0 or tank.HP <= 0:
+            screen.fill(BLACK)
+            self.screen.blit(self.font.render('Press ESC to exit', False, random.choice(GAME_COLORS)), (150, 400))
+            self.font = pygame.font.Font(None, 80)
+            self.screen.blit(self.font.render('GAME OVER', False, WHITE), (200, 250))
+
     def hit(self):
         global trucks
         for t in trucks:
@@ -224,7 +249,7 @@ class Truck:
         self.screen = screen
         self.x = 800
         self.y = 80
-        self.HP = 10
+        self.HP = 3
         self.font = pygame.font.Font(None, 25)
 
     def draw(self):
@@ -238,7 +263,8 @@ class Hostile:
         self.screen = screen
         self.x = 800
         self.y = 200
-        self.HP = 20
+        self.v = 1
+        self.HP = 10
         self.power = 20
         self.reload = 50
         self.path = random.randint(300, 600)
@@ -249,15 +275,17 @@ class Hostile:
     def draw(self):
         if self.an > 0:
             self.screen.blit(pygame.transform.rotate(image_hostile_tank, - self.an / math.pi * 180),
-                        (self.x - (113*math.sin(self.an) + 39*math.cos(self.an)) / 2,
-                         self.y - (113*math.cos(self.an) + 39*math.sin(self.an)) / 2))
+                             (self.x - (113 * math.sin(self.an) + 39 * math.cos(self.an)) / 2,
+                              self.y - (113 * math.cos(self.an) + 39 * math.sin(self.an)) / 2))
         else:
             self.screen.blit(pygame.transform.rotate(image_hostile_tank, - self.an / math.pi * 180),
-                        (self.x - (-113*math.sin(self.an) + 39*math.cos(self.an)) / 2,
-                         self.y - (113*math.cos(self.an) - 39*math.sin(self.an)) / 2))
+                             (self.x - (-113 * math.sin(self.an) + 39 * math.cos(self.an)) / 2,
+                              self.y - (113 * math.cos(self.an) - 39 * math.sin(self.an)) / 2))
         screen.blit(self.font.render(str(self.HP), False, YELLOW), (self.x - 7, self.y - 5))
+
+    def move(self):
         if self.x >= self.path:
-            self.x -= 2
+            self.x -= self.v
         else:
             self.stop = 1
             if self.y - tank.y != 0:
@@ -272,8 +300,8 @@ class Hostile:
             if self.reload == 0:
                 new_ball = Ball(self.screen)
                 new_ball.live = 60
-                new_ball.x = self.x - 56*math.sin(self.an)
-                new_ball.y = self.y + 56*math.cos(self.an)
+                new_ball.x = self.x - 56 * math.sin(self.an)
+                new_ball.y = self.y + 56 * math.cos(self.an)
                 new_ball.vx = - self.power * math.sin(self.an)
                 new_ball.vy = - self.power * math.cos(self.an)
                 balls.append(new_ball)
@@ -301,7 +329,138 @@ class Enemies:
             tanks.append(new_tank)
 
 
+class Enter:
+    def __init__(self):
+        self.screen = pygame.Surface((28, 28))
+        self.win = pygame.display.set_mode((700, 700))
+        self.points = []
+        self.colors = []
+        self.flag = False
+        self.finished = False
+        self.FPS = 120
+
+    def add(self, event):
+        self.points.append((event.pos[0] / 25, event.pos[1] / 25))
+
+    def drawing(self):
+        for i in self.points:
+            pygame.draw.line(self.screen, BLACK, i, i, 1)
+
+    def display(self):
+        clock = pygame.time.Clock()
+
+        while not self.finished:
+            self.screen.fill(WHITE)
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                    pygame.quit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    self.flag = True
+                elif event.type == pygame.MOUSEMOTION and self.flag:
+                    self.add(event)
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    self.flag = False
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                    self.screen.fill([0, 0, 0])
+                    self.points = []
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                    self.finished = True
+
+            self.drawing()
+
+            clock.tick(FPS)
+            self.win.blit(pygame.transform.scale(self.screen, self.win.get_rect().size), (0, 0))
+            pygame.display.update()
+
+        self.screen.set_colorkey(WHITE)
+
+
+class Bullet:
+    def __init__(self, screen):
+        self.screen = screen
+        self.x = tank.x + 25 * math.sin(tank.an)
+        self.y = tank.y - 25 * math.cos(tank.an)
+        self.vx = 0
+        self.vy = 0
+        self.live = 40
+        self.number = 2
+
+    def move(self):
+        self.x += self.vx
+        self.y -= self.vy
+        if self.live == 0:
+            bullets.remove(self)
+        else:
+            self.live -= 1
+
+    def draw(self):
+        self.screen.blit(enter.screen, (self.x - 14, self.y - 14))
+
+    def new(self):
+        new_bullet = Bullet(self.screen)
+        new_bullet.vx = random.randint(-5, 5)
+        new_bullet.vy = random.randint(-5, 5)
+        new_bullet.live = 10
+        new_bullet.x = self.x + new_bullet.vx*15
+        new_bullet.y = self.y + new_bullet.vy*15
+        bullets.append(new_bullet)
+
+    def hit(self):
+        for t in trucks:
+            if (t.x <= self.x <= t.x + 100) and t.y <= self.y <= t.y + 53:
+                t.HP -= 1
+                bullets.remove(self)
+                for i in range(self.number):
+                    self.new()
+
+        for r in interface.rocks:
+            if (r[0] <= self.x <= r[0] + 72) and r[1] <= self.y <= r[1] + 50:
+                bullets.remove(self)
+
+        for t in tanks:
+            if t.stop:
+                if t.an != 0:
+                    b11 = (56 * math.cos(t.an) + t.y) - math.tan(t.an) * (t.x - 56 * math.sin(t.an))
+                    b10 = self.y - math.tan(t.an) * self.x
+                    b12 = (t.y - 56 * math.cos(t.an)) - math.tan(t.an) * (t.x + 56 * math.sin(t.an))
+                    b21 = (t.y - 20 * math.sin(t.an)) + (1 / math.tan(t.an)) * (t.x - 20 * math.cos(t.an))
+                    b20 = self.y + (1 / math.tan(t.an) * self.x)
+                    b22 = (t.y + 20 * math.sin(t.an)) + (1 / math.tan(t.an)) * (t.x + 20 * math.cos(t.an))
+                    if t.an < 0:
+                        if b11 > b10 > b12 and b21 > b20 > b22:
+                            t.HP -= 1
+                            bullets.remove(self)
+                            for i in range(self.number):
+                                self.new()
+                    else:
+                        if b11 > b10 > b12 and b21 < b20 < b22:
+                            t.HP -= 1
+                            bullets.remove(self)
+                            for i in range(self.number):
+                                self.new()
+                else:
+                    b11 = (56 * math.cos(t.an) + t.y) - math.tan(t.an) * (t.x - 56 * math.sin(t.an))
+                    b10 = self.y - math.tan(t.an) * self.x
+                    b12 = (t.y - 56 * math.cos(t.an)) - math.tan(t.an) * (t.x + 56 * math.sin(t.an))
+                    if b11 > b10 > b12 and t.x > self.x > t.x + 39:
+                        t.HP -= 1
+                        bullets.remove(self)
+                        for i in range(self.number):
+                            self.new()
+            else:
+                if -56 < self.x - t.x < 56 and -20 < self.y - t.y < 20:
+                    t.HP -= 1
+                    bullets.remove(self)
+                    for i in range(self.number):
+                        self.new()
+
+
 pygame.init()
+
+enter = Enter()
+enter.display()
+
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 
@@ -314,6 +473,7 @@ image_rock = pygame.transform.scale(pygame.image.load('rock.png').convert_alpha(
 image_hostile_tank = pygame.transform.scale(pygame.image.load('hostile tank.png').convert_alpha(), (39, 113))
 
 balls = []
+bullets = []
 trucks = []
 tanks = []
 tank = Tank(screen)
@@ -337,15 +497,24 @@ while not finished:
         t.draw()
     for t in tanks:
         t.draw()
+        t.move()
         t.fire()
     tank.draw()
     for b in balls:
+        b.draw()
+        b.hit()
+    for b in bullets:
         b.draw()
         b.hit()
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == 27):
             finished = True
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+            if tank.bullet:
+                tank.bullet = 0
+            else:
+                tank.bullet = 1
         elif event.type == pygame.MOUSEMOTION:
             tank.targetting(event)
         elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -362,12 +531,16 @@ while not finished:
     tank.move()
     for b in balls:
         b.move()
+    for b in bullets:
+        b.move()
     for t in trucks:
-        if t.HP == 0:
+        if t.HP <= 0:
             trucks.remove(t)
     for t in tanks:
-        if t.HP == 0:
+        if t.HP <= 0:
             tanks.remove(t)
+
+    interface.game_over()
 
     pygame.display.update()
 
